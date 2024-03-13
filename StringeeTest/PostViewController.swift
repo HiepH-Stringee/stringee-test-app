@@ -7,23 +7,62 @@
 
 import UIKit
 
-class PostViewController: UIViewController {
+import Foundation
 
+// MARK: - PostElement
+struct PostElement: Codable {
+    let id, userID: Int
+    let title, body: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userID = "user_id"
+        case title, body
+    }
+}
+
+typealias Posts = [PostElement]
+
+class PostViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+    @IBOutlet weak var tblView: UITableView!
+    
+    var post = Posts()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        tblView.delegate = self
+        tblView.dataSource = self
+        tblView.estimatedRowHeight = 0
+        tblView.register(UINib(nibName: "PostTableViewCell", bundle: nil), forCellReuseIdentifier: "PostTableViewCell")
+        
+        if let url = URL(string: "https://gorest.co.in/public/v2/posts") {
+            let task = URLSession.shared.dataTask(with: url) {[weak self] (data, response, error) in
+                guard let data = data else { return }
+                self?.post = (try? JSONDecoder().decode(Posts.self, from: data)) ?? []
+                DispatchQueue.main.async {
+                    self?.tblView.reloadData()
+                }
+            }
+            task.resume()
+        }
 
-        // Do any additional setup after loading the view.
     }
     
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        self.post.count
     }
-    */
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if let cell = tableView.dequeueReusableCell(withIdentifier: "PostTableViewCell", for: indexPath) as? PostTableViewCell {
+            cell.present(post[indexPath.row])
+            return cell
+        }
+        fatalError()
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        PostTableViewCell.heightForElement(post[indexPath.row])
+    }
+    
 
 }
